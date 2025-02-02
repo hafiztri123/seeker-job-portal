@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/joho/godotenv"
 )
@@ -31,14 +32,6 @@ func Load() (*Config, error) {
 
 func loadDatabaseConfig() (*DatabaseConfig, error) {
 
-	err := godotenv.Load()
-	if err != nil {
-		return nil, err
-	}
-
-
-
-
 	config := &DatabaseConfig{
 		User: os.Getenv("DB_USER"),
 		Password: os.Getenv("DB_PASSWORD"),
@@ -47,12 +40,24 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 		Name: os.Getenv("DB_NAME"),
 	}
 
-	err = validateDatabaseConfig(config)
+	err := validateDatabaseConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
 	return config, nil
+}
+
+func (d *DatabaseConfig) GetDSN() string {
+
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		d.User,
+		d.Password,
+		d.Host,
+		d.Port,
+		d.Name,
+	)
 }
 
 func validateDatabaseConfig(config *DatabaseConfig) error {
@@ -69,7 +74,7 @@ func validateDatabaseConfig(config *DatabaseConfig) error {
 		return fmt.Errorf("database host is required")
 	}
 
-	if config.Port == "" {
+	if _, err := strconv.Atoi(config.Port); err != nil {
 		return fmt.Errorf("database port is required")
 	}
 
