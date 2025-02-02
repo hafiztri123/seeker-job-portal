@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
+	_ "github.com/lib/pq"
 
-	"github.com/joho/godotenv"
 )
 
 type DatabaseConfig struct {
@@ -14,6 +15,9 @@ type DatabaseConfig struct {
 	Host string
 	Port string
 	Name string
+	MaxOpenConnections int
+	MaxIdleConnections int
+	ConnectionMaxLifetime time.Duration
 }
 
 type Config struct {
@@ -38,6 +42,9 @@ func loadDatabaseConfig() (*DatabaseConfig, error) {
 		Host: os.Getenv("DB_HOST"),
 		Port: os.Getenv("DB_PORT"),
 		Name: os.Getenv("DB_NAME"),
+		MaxOpenConnections: 25,
+		MaxIdleConnections: 5,
+		ConnectionMaxLifetime: 5 * time.Minute,
 	}
 
 	err := validateDatabaseConfig(config)
@@ -81,7 +88,6 @@ func validateDatabaseConfig(config *DatabaseConfig) error {
 	if config.Name == "" {
 		return fmt.Errorf("database name is required")
 	}
-
 	return nil
 	
 }
