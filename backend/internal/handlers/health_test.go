@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http/httptest"
 	"testing"
 
@@ -24,8 +25,12 @@ func TestHealthCheck(t *testing.T) {
 		req := httptest.NewRequest("GET", "/health", nil)
 		resp, _ := app.Test(req)
 
+		defer resp.Body.Close()
+
 		var result map[string]interface{}
-		fiber.ParseBodyJSON(resp.Body, &result)
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			t.Fatal(err)
+		}
 
 		assert.Equal(t, "UP", result["status"])
 		assert.NotNil(t, result["timestamp"])
