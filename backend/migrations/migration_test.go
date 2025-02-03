@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestDB(t *testing.T) *sql.DB {
+func SetupTestDB(t *testing.T) *sql.DB {
 	db, err := sql.Open("postgres", "postgres://hafizh:Sudarmi12@localhost:5432/seeker?sslmode=disable")
 
 	require.NoError(t, err)
@@ -19,7 +19,7 @@ func setupTestDB(t *testing.T) *sql.DB {
 }
 
 func TestMigrator(t *testing.T) {
-	db := setupTestDB(t)
+	db := SetupTestDB(t)
 	defer db.Close()
 	defer cleanupTestDB(t, db)
 

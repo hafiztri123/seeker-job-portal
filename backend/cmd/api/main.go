@@ -10,8 +10,10 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/hafiztri123/internal/core/services"
 	"github.com/hafiztri123/internal/handlers"
 	"github.com/hafiztri123/internal/middleware"
+	"github.com/hafiztri123/internal/repositories/postgres"
 	"github.com/hafiztri123/migrations"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -51,7 +53,34 @@ func main() {
 	app.Use(recover.New())
 	app.Use(cors.New()) //ALLOW ALL ORIGINS. TODO: CUSTOMIZE LATER
 
-	app.Get("/health", handlers.HealthCheck)
+	authHandler := authHandlerInit(db)
+
+	healthRoutes(app)
+	authRoutes(app, authHandler)
+
+
+
 	log.Fatal(app.Listen(":8080"))
 
+}
+
+const (
+	BASE_URL = "/api/v1"
+
+)
+
+func healthRoutes(app *fiber.App)  {
+	app.Get("/health", handlers.HealthCheck)
+}
+
+func authRoutes(app *fiber.App, handler *handlers.AuthHandler)  {
+	auth := app.Group(BASE_URL + "/auth")
+	auth.Post("/login", handler.Login)
+	auth.Post("/register", handler.Register)
+}
+
+func authHandlerInit(db *sql.DB) *handlers.AuthHandler {
+	authRepo := postgres.NewUserRepository(db)
+	authService := services.NewAuthService(authRepo)
+	return handlers.NewAuthHandler(authService)
 }
