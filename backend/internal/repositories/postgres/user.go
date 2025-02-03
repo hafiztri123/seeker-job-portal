@@ -4,6 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/hafiztri123/internal/core/domain"
+	"github.com/hafiztri123/internal/core/ports"
 )
 
 type UserRepository struct {
@@ -15,7 +16,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 }
 
 func (r *UserRepository) Create(user *domain.User) error {
-	
+
 	query := `
 		INSERT INTO users (id, email, hashed_password, full_name)
 		VALUES ($1, $2, $3, $4)
@@ -73,6 +74,30 @@ func (r *UserRepository) FindByID(id string) (*domain.User, error) {
 	}
 
 	return user, err
+}
+
+func(r *UserRepository) Update(user *domain.User) error {
+	query := `
+		UPDATE users
+		SET full_name= $1, phone_number = $2, about = $3
+		WHERE id = $4 AND deleted_at IS NULL
+	`
+
+	result, err := r.db.Exec(query, user.FullName, user.PhoneNumber, user.About, user.ID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rows == 0 {
+		return ports.ErrUserNotFound
+	}
+
+	return nil
 }
 
 func (r *UserRepository) Delete(id string) error {

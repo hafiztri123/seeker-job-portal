@@ -21,5 +21,6 @@ type UserRepository interface{
 	FindByID(id string) (*domain.User, error)
 	Create(user *domain.User) error
 	Delete(id string) error
+	Update(user *domain.User) error
 }
 

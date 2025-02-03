@@ -10,19 +10,19 @@ import (
 	"github.com/hafiztri123/internal/repositories/postgres"
 )
 
-type authService struct {
+type AuthService struct {
    userRepo *postgres.UserRepository
    jwtSecret string
 }
 
-func NewAuthService(userRepo *postgres.UserRepository) *authService {
-   return &authService{
+func NewAuthService(userRepo *postgres.UserRepository) *AuthService {
+   return &AuthService{
        userRepo: userRepo,
        jwtSecret: "your-secret-key", // Should come from config
    }
 }
 
-func (s *authService) Login(email, password string) (string, error) {
+func (s *AuthService) Login(email, password string) (string, error) {
    user, err := s.userRepo.FindByEmail(email)
    if err != nil {
        return "", err
@@ -40,7 +40,7 @@ func (s *authService) Login(email, password string) (string, error) {
    return token.SignedString([]byte(s.jwtSecret))
 }
 
-func (s *authService) ValidateToken(tokenString string) (*domain.User, error) {
+func (s *AuthService) ValidateToken(tokenString string) (*domain.User, error) {
    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
        return []byte(s.jwtSecret), nil
    })
@@ -55,7 +55,7 @@ func (s *authService) ValidateToken(tokenString string) (*domain.User, error) {
    return s.userRepo.FindByID(userID)
 }
 
-func (s *authService) Register(user *domain.User) error {
+func (s *AuthService) Register(user *domain.User) error {
    if err := validateRegister(user); err != nil {
        return err
    }

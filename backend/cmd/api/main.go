@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/hafiztri123/internal/core/ports"
 	"github.com/hafiztri123/internal/core/services"
 	"github.com/hafiztri123/internal/handlers"
 	"github.com/hafiztri123/internal/middleware"
@@ -53,8 +54,10 @@ func main() {
 	app.Use(recover.New())
 	app.Use(cors.New()) //ALLOW ALL ORIGINS. TODO: CUSTOMIZE LATER
 
-	authHandler := authHandlerInit(db)
+	authHandler, authService := authHandlerInit(db)
+	profileHandler := profileHandlerInit(db)
 
+	profileRoutes(app, profileHandler, authService)
 	healthRoutes(app)
 	authRoutes(app, authHandler)
 
@@ -79,8 +82,22 @@ func authRoutes(app *fiber.App, handler *handlers.AuthHandler)  {
 	auth.Post("/register", handler.Register)
 }
 
-func authHandlerInit(db *sql.DB) *handlers.AuthHandler {
+
+func authHandlerInit(db *sql.DB) (*handlers.AuthHandler, ports.AuthService) {
 	authRepo := postgres.NewUserRepository(db)
 	authService := services.NewAuthService(authRepo)
-	return handlers.NewAuthHandler(authService)
+	return handlers.NewAuthHandler(authService), authService
 }
+
+func profileHandlerInit(db *sql.DB) *handlers.ProfileHandler {
+	profileRepo := postgres.NewUserRepository(db)
+	profileService := services.NewProfileService(profileRepo)
+	return handlers.NewProfileHandler(profileService)
+}
+
+func profileRoutes(app *fiber.App, handler *handlers.ProfileHandler, authService ports.AuthService) {
+	profile := app.Group(BASE_URL + "/user/profile", middleware.AuthMiddleware(authService))
+	profile.Get("/", handler.GetProfile)
+	profile.Put("/", handler.UpdateProfile)
+}
+

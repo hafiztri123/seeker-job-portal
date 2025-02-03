@@ -13,6 +13,9 @@ type User struct {
 	Email string `json:"email"`
 	HashedPassword string `json:"-"`
 	FullName string `json:"full_name"`
+	PhoneNumber string `json:"phone_number"`
+	About string `json:"about"`
+	ProfilePicture string `json:"profile_picture"`
 }
 
 var (
