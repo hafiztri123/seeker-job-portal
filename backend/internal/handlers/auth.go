@@ -21,19 +21,25 @@ type loginRequest struct {
 	Password string `json:"password"`
 }
 
+type loginResponse struct {
+	AccessToken string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	var req loginRequest
 	if err := c.BodyParser(&req); err != nil {
 		return err
 	}
 
-	token, err := h.authService.Login(req.Email, req.Password)
+	tokens, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
 		return err
 	}
 
-	return c.JSON(fiber.Map{
-		"token": token,
+	return c.JSON(loginResponse{
+		AccessToken: tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
 	})
 }
 
@@ -63,3 +69,25 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 	})
 
 }
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
+
+func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
+	var req refreshRequest
+	if err := c.BodyParser(&req); err != nil {
+		return err
+	}
+
+	tokens, err := h.authService.RefreshToken(req.RefreshToken)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(loginResponse{
+		AccessToken: tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+	})
+}
+

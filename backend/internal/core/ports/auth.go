@@ -10,10 +10,14 @@ var (
 	ErrUserNotFound = errors.New("user not found")
 )
 
+
+
 type AuthService interface {
-	Login(email, password string) (string, error)
+	Login(email, password string) (*domain.TokenPair, error)
 	ValidateToken(token string) (*domain.User, error)
 	Register(user *domain.User) error
+	RefreshToken(token string) (*domain.TokenPair, error)
+	RevokeRefreshToken(token string) error 
 }
 
 type UserRepository interface{ 

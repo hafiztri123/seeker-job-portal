@@ -2,102 +2,101 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
-	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/hafiztri123/config"
 	"github.com/hafiztri123/internal/core/ports"
 	"github.com/hafiztri123/internal/core/services"
 	"github.com/hafiztri123/internal/handlers"
 	"github.com/hafiztri123/internal/middleware"
 	"github.com/hafiztri123/internal/repositories/postgres"
 	"github.com/hafiztri123/migrations"
+	"github.com/hafiztri123/pkg/database"
+	"github.com/hafiztri123/pkg/redis"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	redisClient "github.com/redis/go-redis/v9"
+	
 )
+
+const (
+	BASE_URL = "/api/v1"
+)
+
 func main() {
 	err := godotenv.Load("/home/hafizh/seeker.com/app.env")
 	if err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	dbURL := fmt.Sprintf(
-        "postgres://%s:%s@%s:%s/%s?sslmode=disable",
-        os.Getenv("DB_USER"),
-        os.Getenv("DB_PASSWORD"),
-        os.Getenv("DB_HOST"),
-        os.Getenv("DB_PORT"),
-        os.Getenv("DB_NAME"),
-    )
-
-	db, err := sql.Open("postgres", dbURL)
+	config, err := config.Load()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	db, err := database.Connect(config.Database)
+	if err != nil {
+		log.Fatalf("Error connecting to database: %v", err)
 	}
 	defer db.Close()
 
 	migrator := migrations.NewMigrator(db)
+
 	err = migrator.Run()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Error running migrations: %v", err)
 	}
+
+	redisClient := redis.NewRedisClient(config.Redis)
+	defer redisClient.Close()
 
 	app := fiber.New(fiber.Config{
 		ErrorHandler: middleware.ErrorHandler,
 	})
 
-	app.Use(logger.New())
 	app.Use(recover.New())
-	app.Use(cors.New()) //ALLOW ALL ORIGINS. TODO: CUSTOMIZE LATER
+	app.Use(logger.New())
+	app.Use(cors.New())
 
-	authHandler, authService := authHandlerInit(db)
+	authHandler, authService :=authHandlerInit(db, redisClient, config)
 	profileHandler := profileHandlerInit(db)
-
-	profileRoutes(app, profileHandler, authService)
-	healthRoutes(app)
-	authRoutes(app, authHandler)
-
-
-
+	setupRoutes(app, authHandler, profileHandler, authService)
 	log.Fatal(app.Listen(":8080"))
 
 }
 
-const (
-	BASE_URL = "/api/v1"
 
-)
+	
 
-func healthRoutes(app *fiber.App)  {
-	app.Get("/health", handlers.HealthCheck)
-}
-
-func authRoutes(app *fiber.App, handler *handlers.AuthHandler)  {
-	auth := app.Group(BASE_URL + "/auth")
-	auth.Post("/login", handler.Login)
-	auth.Post("/register", handler.Register)
-}
-
-
-func authHandlerInit(db *sql.DB) (*handlers.AuthHandler, ports.AuthService) {
+func authHandlerInit(db *sql.DB, redisClient *redisClient.Client, config *config.Config) (*handlers.AuthHandler, ports.AuthService) {
 	authRepo := postgres.NewUserRepository(db)
-	authService := services.NewAuthService(authRepo)
+	authService := services.NewAuthService(authRepo, redisClient, config)
 	return handlers.NewAuthHandler(authService), authService
-}
+ }
 
-func profileHandlerInit(db *sql.DB) *handlers.ProfileHandler {
-	profileRepo := postgres.NewUserRepository(db)
-	profileService := services.NewProfileService(profileRepo)
-	return handlers.NewProfileHandler(profileService)
-}
-
-func profileRoutes(app *fiber.App, handler *handlers.ProfileHandler, authService ports.AuthService) {
-	profile := app.Group(BASE_URL + "/user/profile", middleware.AuthMiddleware(authService))
-	profile.Get("/", handler.GetProfile)
-	profile.Put("/", handler.UpdateProfile)
-}
-
+ func profileHandlerInit(db *sql.DB) (*handlers.ProfileHandler) {
+	userRepo := postgres.NewUserRepository(db)
+	userService := services.NewProfileService(userRepo)
+	return handlers.NewProfileHandler(userService)
+ }
+ 
+ 
+ func setupRoutes(app *fiber.App, authHandler *handlers.AuthHandler, profileHandler *handlers.ProfileHandler, authService ports.AuthService) {
+	api := app.Group(BASE_URL)
+	
+	// Public routes
+	app.Get("/health", handlers.HealthCheck)
+	auth := api.Group("/auth")
+	auth.Post("/login", authHandler.Login)
+	auth.Post("/register", authHandler.Register)
+	auth.Post("/refresh", authHandler.RefreshToken)
+ 
+	// Protected routes
+	protected := api.Group("/user", middleware.AuthMiddleware(authService))
+	protected.Get("/profile", profileHandler.GetProfile)
+	protected.Put("/profile", profileHandler.UpdateProfile)
+ }
