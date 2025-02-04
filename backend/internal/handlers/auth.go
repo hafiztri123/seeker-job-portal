@@ -4,6 +4,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/hafiztri123/internal/core/domain"
 	"github.com/hafiztri123/internal/core/ports"
+	"github.com/hafiztri123/internal/middleware"
 )
 
 type AuthHandler struct {
@@ -16,9 +17,9 @@ func NewAuthHandler(authService ports.AuthService) *AuthHandler {
 	}
 }
 
-type loginRequest struct {
-	Email string `json:"email"`
-	Password string `json:"password"`
+type LoginRequest struct {
+	Email string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=6"`
 }
 
 type loginResponse struct {
@@ -27,14 +28,19 @@ type loginResponse struct {
 }
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
-	var req loginRequest
+	var req LoginRequest
 	if err := c.BodyParser(&req); err != nil {
 		return err
 	}
 
+
 	tokens, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
-		return err
+		return c.Status(fiber.StatusUnauthorized).JSON(middleware.AppError{
+			Code: middleware.ErrInvalidCredentials,
+			Message: "Invalid credentials",
+			
+		})
 	}
 
 	return c.JSON(loginResponse{
@@ -44,9 +50,9 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 }
 
 type RegisterRequest struct {
-	Email string `json:"email"`
-	Password string `json:"password"`
-	FullName string `json:"full_name"`
+	Email string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,password_strength"`
+	FullName string `json:"full_name" validate:"required"`
 }
 
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
@@ -70,14 +76,22 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 }
 
-type refreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
-	var req refreshRequest
+	var req RefreshRequest
 	if err := c.BodyParser(&req); err != nil {
 		return err
+	}
+
+	if errors := middleware.ValidateRequest(&req); len(errors) > 0 {
+		return &middleware.AppError{
+			Code: middleware.ErrInvalidInput,
+			Message: "validation failed",
+			Details: errors,
+		}
 	}
 
 	tokens, err := h.authService.RefreshToken(req.RefreshToken)

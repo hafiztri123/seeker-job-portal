@@ -45,6 +45,11 @@ func NewUser(email, fullname, password string) (*User, error) {
 }
 
 func (u *User) ValidatePassword(password string) error {
-	return bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(password))
+	err := bcrypt.CompareHashAndPassword([]byte(u.HashedPassword), []byte(password))
+	if err != nil {
+		return errors.New("invalid password")
+	}
+
+	return nil
 }
 

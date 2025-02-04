@@ -20,7 +20,6 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	redisClient "github.com/redis/go-redis/v9"
-	
 )
 
 const (
@@ -62,41 +61,37 @@ func main() {
 	app.Use(logger.New())
 	app.Use(cors.New())
 
-	authHandler, authService :=authHandlerInit(db, redisClient, config)
+	authHandler, authService := authHandlerInit(db, redisClient, config)
 	profileHandler := profileHandlerInit(db)
 	setupRoutes(app, authHandler, profileHandler, authService)
 	log.Fatal(app.Listen(":8080"))
 
 }
 
-
-	
-
 func authHandlerInit(db *sql.DB, redisClient *redisClient.Client, config *config.Config) (*handlers.AuthHandler, ports.AuthService) {
 	authRepo := postgres.NewUserRepository(db)
 	authService := services.NewAuthService(authRepo, redisClient, config)
 	return handlers.NewAuthHandler(authService), authService
- }
+}
 
- func profileHandlerInit(db *sql.DB) (*handlers.ProfileHandler) {
+func profileHandlerInit(db *sql.DB) *handlers.ProfileHandler {
 	userRepo := postgres.NewUserRepository(db)
 	userService := services.NewProfileService(userRepo)
 	return handlers.NewProfileHandler(userService)
- }
- 
- 
- func setupRoutes(app *fiber.App, authHandler *handlers.AuthHandler, profileHandler *handlers.ProfileHandler, authService ports.AuthService) {
+}
+
+func setupRoutes(app *fiber.App, authHandler *handlers.AuthHandler, profileHandler *handlers.ProfileHandler, authService ports.AuthService) {
 	api := app.Group(BASE_URL)
-	
+
 	// Public routes
 	app.Get("/health", handlers.HealthCheck)
 	auth := api.Group("/auth")
-	auth.Post("/login", authHandler.Login)
-	auth.Post("/register", authHandler.Register)
-	auth.Post("/refresh", authHandler.RefreshToken)
- 
+	auth.Post("/login", middleware.ValidateBody(&handlers.LoginRequest{}) ,authHandler.Login)
+	auth.Post("/register", middleware.ValidateBody(&handlers.RegisterRequest{}), authHandler.Register)
+	auth.Post("/refresh",middleware.ValidateBody(&handlers.RefreshRequest{}) ,authHandler.RefreshToken)
+
 	// Protected routes
 	protected := api.Group("/user", middleware.AuthMiddleware(authService))
 	protected.Get("/profile", profileHandler.GetProfile)
 	protected.Put("/profile", profileHandler.UpdateProfile)
- }
+}

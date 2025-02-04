@@ -21,9 +21,20 @@ func(s *profileService) UpdateProfile(userID uuid.UUID, req ports.UpdateProfileR
 		return nil, err
 	}
 
-	user.FullName = req.Fullname
-	user.PhoneNumber = req.PhoneNumber
-	user.About = req.About
+	if req.Fullname != nil {
+		user.FullName = *req.Fullname
+	}
+
+	if req.PhoneNumber != nil {
+		user.PhoneNumber = *req.PhoneNumber
+	}
+
+	if req.About != nil {
+		user.About = *req.About
+	}
+
+	
+
 
 	if err := s.userRepo.Update(user); err != nil {
 		return nil, err

@@ -28,6 +28,7 @@ func (h *ProfileHandler) UpdateProfile(c *fiber.Ctx) error {
 		return err
 	}
 
+
 	user := c.Locals("user").(*domain.User)
 
 	updatedUser, err := h.userService.UpdateProfile(user.ID, req)

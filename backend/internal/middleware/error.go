@@ -9,6 +9,7 @@ const (
 	ErrNotFound         ErrorCode = "NOT_FOUND"
 	ErrUnauthorized     ErrorCode = "UNAUTHORIZED"
 	ErrInternalServer   ErrorCode = "INTERNAL_SERVER"
+	ErrInvalidCredentials ErrorCode = "INVALID_CREDENTIALS"
 )
 
 type AppError struct {
@@ -30,7 +31,9 @@ func ErrorHandler(c *fiber.Ctx, err error) error {
 			code = fiber.StatusBadRequest
 		case ErrNotFound:
 			code = fiber.StatusNotFound
-		case ErrUnauthorized:
+		case ErrUnauthorized :
+			code = fiber.StatusUnauthorized
+		case ErrInvalidCredentials:
 			code = fiber.StatusUnauthorized
 		case ErrInternalServer:
 			code = fiber.StatusInternalServerError
