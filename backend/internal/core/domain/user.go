@@ -2,7 +2,6 @@ package domain
 
 import (
 	"errors"
-	"regexp"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -18,15 +17,7 @@ type User struct {
 	ProfilePicture string `json:"profile_picture"`
 }
 
-var (
-	ErrRegisterInvalidInput = errors.New("register invalid input")
-)
 
-const (
-	EmailRegex = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-)
-
-var emailRegex = regexp.MustCompile(EmailRegex)
 
 
 func NewUser(email, fullname, password string) (*User, error) {

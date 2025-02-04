@@ -29,7 +29,7 @@ const (
 )
 
 func main() {
-	err := godotenv.Load("/home/hafizh/seeker.com/app.env")
+	err := godotenv.Load("/app/app.env")
 	if err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}

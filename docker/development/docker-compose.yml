@@ -1,0 +1,56 @@
+services:
+ app:
+   build: 
+     context: ../../backend/
+     dockerfile: Dockerfile
+   volumes:
+     - ./app.env:/app/app.env
+   ports:
+     - "8080:8080"
+   environment:
+     - DB_HOST=postgres
+     - DB_PORT=5432
+     - DB_USER=jobboard
+     - DB_PASSWORD=jobboard
+     - DB_NAME=jobboard
+     - REDIS_HOST=redis
+     - REDIS_PORT=6379
+     - ES_HOST=elasticsearch
+   depends_on:
+     - postgres
+     - redis
+     - elasticsearch
+
+ postgres:
+   image: postgres:15
+   environment:
+     - POSTGRES_USER=jobboard
+     - POSTGRES_PASSWORD=jobboard
+     - POSTGRES_DB=jobboard
+   ports:
+     - "5433:5433"
+   volumes:
+     - postgres_data:/var/lib/postgresql/data
+
+ redis:
+   image: redis:7
+   ports:
+     - "6380:6380"
+   volumes:
+     - redis_data:/data
+
+ elasticsearch:
+   image: elasticsearch:8.12.0
+   environment:
+     - discovery.type=single-node
+     - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+     - xpack.security.enabled=false
+   ports:
+     - "9201:9201"
+   volumes:
+     - elasticsearch_data:/usr/share/elasticsearch/data
+
+volumes:
+ postgres_data:
+ redis_data:
+ elasticsearch_data:
