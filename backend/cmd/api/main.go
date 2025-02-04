@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -17,6 +18,7 @@ import (
 	"github.com/hafiztri123/migrations"
 	"github.com/hafiztri123/pkg/database"
 	"github.com/hafiztri123/pkg/redis"
+	seed "github.com/hafiztri123/scripts"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	redisClient "github.com/redis/go-redis/v9"
@@ -52,6 +54,13 @@ func main() {
 
 	redisClient := redis.NewRedisClient(config.Redis)
 	defer redisClient.Close()
+
+	if os.Getenv("APP_ENV") == "development" {
+		seeder := seed.NewSeeder(db)
+		if err :=seeder.SeedAll(); err != nil {
+			log.Fatalf("Error seeding database: %v", err)
+		}
+	}
 
 	app := fiber.New(fiber.Config{
 		ErrorHandler: middleware.ErrorHandler,
