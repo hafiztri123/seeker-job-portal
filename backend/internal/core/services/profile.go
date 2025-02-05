@@ -33,7 +33,14 @@ func(s *profileService) UpdateProfile(userID uuid.UUID, req ports.UpdateProfileR
 		user.About = *req.About
 	}
 
-	
+	if req.Location != nil {
+		user.Location = *req.Location
+	}
+
+	if req.ProfilePicture != nil {
+		user.ProfilePicture = *req.ProfilePicture
+	}
+
 
 
 	if err := s.userRepo.Update(user); err != nil {

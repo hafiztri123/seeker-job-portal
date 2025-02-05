@@ -43,12 +43,14 @@ func NewAuthService(userRepo *postgres.UserRepository, redisClient *redis.Client
 }
 
 func (s *AuthService) Login(email, password string) (*domain.TokenPair, error) {
-   user, err := s.userRepo.FindByEmail(email)
-   if err != nil {
-       return nil, err
-   }
-
+    fmt.Printf("Attempting to find user with email: %s\n", email)
+    user, err := s.userRepo.FindByEmail(email)
+    if err != nil {
+        fmt.Printf("Database error finding user: %v\n", err)
+        return nil, err
+    }
    if err := user.ValidatePassword(password); err != nil {
+
        return nil, err
    }
 

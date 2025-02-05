@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/hafiztri123/internal/core/domain"
 	"github.com/hafiztri123/internal/core/ports"
@@ -28,20 +30,23 @@ type loginResponse struct {
 }
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
-	var req LoginRequest
-	if err := c.BodyParser(&req); err != nil {
-		return err
-	}
+    var req LoginRequest
+    if err := c.BodyParser(&req); err != nil {
+        fmt.Printf("Body parsing error: %v\n", err)
+        return err
+    }
+    fmt.Printf("Login attempt for email: %s\n", req.Email)
 
-
-	tokens, err := h.authService.Login(req.Email, req.Password)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(middleware.AppError{
-			Code: middleware.ErrInvalidCredentials,
-			Message: "Invalid credentials",
-			
-		})
-	}
+    tokens, err := h.authService.Login(req.Email, req.Password)
+    if err != nil {
+        fmt.Printf("Login error: %v\n", err)
+        return c.Status(fiber.StatusUnauthorized).JSON(middleware.AppError{
+            Code: middleware.ErrInvalidCredentials,
+            Message: "Invalid credentials",
+            Details: err,
+        })
+    }
+    fmt.Printf("Login successful for email: %s\n", req.Email)
 
 	return c.JSON(loginResponse{
 		AccessToken: tokens.AccessToken,

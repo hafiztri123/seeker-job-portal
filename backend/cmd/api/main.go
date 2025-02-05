@@ -14,6 +14,7 @@ import (
 	"github.com/hafiztri123/internal/core/services"
 	"github.com/hafiztri123/internal/handlers"
 	"github.com/hafiztri123/internal/middleware"
+	"github.com/hafiztri123/internal/repositories/elasticsearch"
 	"github.com/hafiztri123/internal/repositories/postgres"
 	"github.com/hafiztri123/migrations"
 	"github.com/hafiztri123/pkg/database"
@@ -72,7 +73,10 @@ func main() {
 
 	authHandler, authService := authHandlerInit(db, redisClient, config)
 	profileHandler := profileHandlerInit(db)
-	setupRoutes(app, authHandler, profileHandler, authService)
+	searchHandler := searchHandlerInit(db, config)
+
+
+	setupRoutes(app, authHandler, profileHandler, searchHandler, authService )
 	log.Fatal(app.Listen(":8080"))
 
 }
@@ -89,18 +93,35 @@ func profileHandlerInit(db *sql.DB) *handlers.ProfileHandler {
 	return handlers.NewProfileHandler(userService)
 }
 
-func setupRoutes(app *fiber.App, authHandler *handlers.AuthHandler, profileHandler *handlers.ProfileHandler, authService ports.AuthService) {
+func setupRoutes(app *fiber.App, authHandler *handlers.AuthHandler, profileHandler *handlers.ProfileHandler, searchHandler *handlers.SearchHandler, authService ports.AuthService) {
 	api := app.Group(BASE_URL)
-
+	
 	// Public routes
 	app.Get("/health", handlers.HealthCheck)
+	
 	auth := api.Group("/auth")
-	auth.Post("/login", middleware.ValidateBody(&handlers.LoginRequest{}) ,authHandler.Login)
+	auth.Post("/login", middleware.ValidateBody(&handlers.LoginRequest{}), authHandler.Login)
 	auth.Post("/register", middleware.ValidateBody(&handlers.RegisterRequest{}), authHandler.Register)
-	auth.Post("/refresh",middleware.ValidateBody(&handlers.RefreshRequest{}) ,authHandler.RefreshToken)
-
+	auth.Post("/refresh", middleware.ValidateBody(&handlers.RefreshRequest{}), authHandler.RefreshToken)
+	
+	// Search routes
+	jobs := api.Group("/jobs")
+	jobs.Get("/search", searchHandler.SearchJobs)
+ 
 	// Protected routes
 	protected := api.Group("/user", middleware.AuthMiddleware(authService))
 	protected.Get("/profile", profileHandler.GetProfile)
-	protected.Put("/profile", profileHandler.UpdateProfile)
-}
+	protected.Put("/profile", middleware.ValidateBody(&ports.UpdateProfileRequest{}), profileHandler.UpdateProfile)
+ }
+
+ func searchHandlerInit(db *sql.DB, config *config.Config) *handlers.SearchHandler {
+	searchRepo, err := elasticsearch.NewSearchRepository(&config.ElasticSearch)
+	if err != nil {
+		log.Fatal(err)
+	}
+	jobRepo := postgres.NewJobRepository(db)
+	searchService := services.NewSearchService(*searchRepo, *jobRepo)
+	return handlers.NewSearchHandler(searchService)
+ }
+
+

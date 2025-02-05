@@ -9,6 +9,11 @@ import (
 
 )
 
+type ElasticSearchConfig struct {
+	URL string
+	Index string
+}
+
 type DatabaseConfig struct {
 	User string
 	Password string
@@ -38,7 +43,7 @@ type Config struct {
 	Database *DatabaseConfig
 	Redis *RedisConfig
 	JWT *JWTConfig
-
+	ElasticSearch ElasticSearchConfig
 
 }
 
@@ -120,6 +125,13 @@ func loadRedisConfig() (*RedisConfig, error) {
 		return nil, err
 	}
 	return config, nil
+}
+
+func loadElasticSearchConfig() (*ElasticSearchConfig, error) {
+	return &ElasticSearchConfig{
+		URL: os.Getenv("ES_HOST"),
+		Index: "jobs",
+	}, nil
 }
 
 func (d *DatabaseConfig) GetDSN() string {

@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -13,8 +14,12 @@ type User struct {
 	HashedPassword string `json:"-"`
 	FullName string `json:"full_name"`
 	PhoneNumber string `json:"phone_number"`
+	Location map[string]interface{} `json:"location"`
 	About string `json:"about"`
 	ProfilePicture string `json:"profile_picture"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at"`
 }
 
 

@@ -79,8 +79,8 @@ func (r *UserRepository) FindByID(id string) (*domain.User, error) {
 func(r *UserRepository) Update(user *domain.User) error {
 	query := `
 		UPDATE users
-		SET full_name= $1, phone_number = $2, about = $3
-		WHERE id = $4 AND deleted_at IS NULL
+		SET full_name= $1, phone_number = $2, about = $3, location = $4, profile_picture = $5, updated_at = now(), 
+		WHERE id = $6 AND deleted_at IS NULL
 	`
 
 	result, err := r.db.Exec(query, user.FullName, user.PhoneNumber, user.About, user.ID)
