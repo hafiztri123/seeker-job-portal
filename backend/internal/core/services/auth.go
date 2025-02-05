@@ -18,6 +18,7 @@ import (
 type AuthService struct {
    userRepo *postgres.UserRepository
    redisClient *redis.Client
+   companyRepo *postgres.CompanyRepository
    jwtSecret string
    refreshSecret string
    refreshTTL time.Duration
@@ -31,9 +32,10 @@ var (
     
 )
 
-func NewAuthService(userRepo *postgres.UserRepository, redisClient *redis.Client, config *config.Config) *AuthService {
+func NewAuthService(userRepo *postgres.UserRepository, redisClient *redis.Client, config *config.Config, companyRepo *postgres.CompanyRepository) *AuthService {
    return &AuthService{
        userRepo: userRepo,
+       companyRepo: companyRepo,
        redisClient: redisClient,
        jwtSecret: config.JWT.Secret,
        refreshSecret: config.JWT.RefreshSecret,
@@ -43,26 +45,27 @@ func NewAuthService(userRepo *postgres.UserRepository, redisClient *redis.Client
 }
 
 func (s *AuthService) Login(email, password string) (*domain.TokenPair, error) {
-    fmt.Printf("Attempting to find user with email: %s\n", email)
+    // Try user login
     user, err := s.userRepo.FindByEmail(email)
+    if err == nil {
+        if err := user.ValidatePassword(password); err != nil {
+            return nil, err
+        }
+        return s.generateTokenPair(user.ID, "user")
+    }
+ 
+    // Try company login
+    company, err := s.companyRepo.FindByEmail(email)
     if err != nil {
-        fmt.Printf("Database error finding user: %v\n", err)
         return nil, err
     }
-   if err := user.ValidatePassword(password); err != nil {
+    if err := company.ValidatePassword(password); err != nil {
+        return nil, err
+    }
+    return s.generateTokenPair(company.Id, "company")
+ }
 
-       return nil, err
-   }
-
-//    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-//        "sub": user.ID,
-//        "exp": time.Now().Add(24 * time.Hour).Unix(),
-//    })
-
-   return s.generateTokenPair(user.ID)
-}
-
-func (s *AuthService) ValidateToken(tokenString string) (*domain.User, error) {
+func (s *AuthService) ValidateToken(tokenString string) (jwt.MapClaims, error) {
    token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
        return []byte(s.jwtSecret), nil
    })
@@ -72,9 +75,8 @@ func (s *AuthService) ValidateToken(tokenString string) (*domain.User, error) {
    }
 
    claims := token.Claims.(jwt.MapClaims)
-   userID := claims["sub"].(string)
-
-   return s.userRepo.FindByID(userID)
+   
+   return claims, nil
 }
 
 func (s *AuthService) Register(user *domain.User) error {
@@ -101,15 +103,17 @@ func validateRegister(user *domain.User) error {
    return nil
 }
 
-func (s *AuthService) generateTokenPair(userID uuid.UUID) (*domain.TokenPair, error) {
+func (s *AuthService) generateTokenPair(userID uuid.UUID, role string) (*domain.TokenPair, error) {
     accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
         "sub": userID,
+        "role": role,
         "exp": time.Now().Add(s.accessTTL).Unix(),
         "type": "access", 
     })
 
     refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
         "sub": userID,
+        "role": role,
         "exp": time.Now().Add(s.refreshTTL).Unix(),
         "type": "refresh", 
     })
@@ -154,7 +158,7 @@ func (s *AuthService) RefreshToken(refreshToken string) (*domain.TokenPair, erro
 
 
 
-    return s.generateTokenPair(uuid.MustParse(userID))
+    return s.generateTokenPair(uuid.MustParse(userID), claims["role"].(string))
 }
 
 func (s *AuthService) validateRefreshToken(tokenString string) (jwt.MapClaims, error) {
@@ -188,4 +192,12 @@ func (s *AuthService) RevokeRefreshToken(token string) error {
     }
 
     return nil
+}
+
+func (s *AuthService) GetUser(id string) (*domain.User, error) {
+    return s.userRepo.FindByID(id)
+}
+
+func (s *AuthService) GetCompany(id string) (*domain.Company, error) {
+    return s.companyRepo.FindByID(id)
 }
